@@ -1,6 +1,6 @@
 <?php
 
-namespace Cubify;
+namespace Cubify\Cubes;
 
 interface SqlCube
 {
