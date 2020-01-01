@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/7.5/phpunit.xsd"
+         bootstrap="../bootstrap.php"
+         colors="true"
+         forceCoversAnnotation="false"
+         beStrictAboutCoversAnnotation="false"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTodoAnnotatedTests="true"
+         verbose="true">
+    <logging>
+        <log type="testdox-html" target="../tests/files/testdox/testdox.html"/>
+        <!--        <log type="testdox-text" target="../../files/testdox/testdox.html"/>-->
+        <!--        <log type="junit" target="../../files/testdox/testdox.xml"/>-->
+        <log type="coverage-html" target="../tests/files/testdox/report_html/" lowUpperBound="35" highLowerBound="70"/>
+        <!--        <log type="coverage-clover" target="../../files/testdox/report_xml/coverage.xml"/>-->
+        <!--        <log type="coverage-php" target="../../files/testdox/report_php/coverage.serialized"/>-->
+        <!--        <log type="coverage-text" target="php://stdout" showUncoveredFiles="false"/>-->
+    </logging>
+    <testsuites>
+        <testsuite name="default">
+            <directory suffix="Test.php">../../tests/</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">../../src/</directory>
+        </whitelist>
+    </filter>
+</phpunit>
