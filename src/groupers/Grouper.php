@@ -4,10 +4,9 @@ namespace Cubify\Groupers;
 interface Grouper
 {
     /**
-     * @param string $output 'detailed','short'
      * @return array $groupings
      */
-    public function getGroupings($output = 'short');
+    public function getGroupings();
 
     /**
      * @return  array $masks

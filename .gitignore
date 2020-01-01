@@ -24,7 +24,8 @@
 ############
 /vendor/
 /functional_tests/
+/assets/
+/tests/files/
+index.php
 todo.txt
 .idea
-/assets/
-index.php

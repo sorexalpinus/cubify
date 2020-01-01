@@ -13,5 +13,3 @@ $loader = require 'vendor/autoload.php';
 $loader->addPsr4('Cubify\\', $path);
 $loader->addPsr4('Cubify\\', $funcTestPath);
 define('SRC_PATH',$path);
-$rootWebpath = 'http://' . $_SERVER['SERVER_NAME'];
-define('ROOT_WEBPATH',$rootWebpath);

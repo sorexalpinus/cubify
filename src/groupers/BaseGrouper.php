@@ -2,6 +2,8 @@
 
 namespace Cubify\Groupers;
 
+use Cubify\Exceptions\CubifyException;
+
 class BaseGrouper implements Grouper
 {
     /** @var int $numDims number of dimensions */
@@ -14,19 +16,24 @@ class BaseGrouper implements Grouper
      *
      * @param int $numDims
      * @param array $masks
+     * @throws CubifyException
      */
     public function __construct($numDims, $masks)
     {
-        $this->numDims = $numDims;
-        $this->setMasks($masks);
+        if($this->inputValid($numDims, $masks)) {
+            $this->numDims = $numDims;
+            $this->setMasks($masks);
+        }
+        else {
+            throw new CubifyException('Invalid definition - inconsistency in number of dimensions and masks');
+        }
     }
 
 
     /**
-     * @param string $output 'detailed','short'
      * @return array $groupings
      */
-    public function getGroupings($output = 'short')
+    public function getGroupings()
     {
         if (is_array($this->masks) and sizeof($this->masks) > 0) {
             $masksToCover = $this->masks;
@@ -44,15 +51,16 @@ class BaseGrouper implements Grouper
                     }
                 }
             }
-            if ($output == 'short') {
-                $counts = [];
-                foreach ($masksCovered as $mask => $grouping) {
-                    $counts[$grouping]++;
+            $counts = [];
+            foreach ($masksCovered as $mask => $grouping) {
+                if (!isset($counts[$grouping])) {
+                    $counts[$grouping] = 0;
                 }
-                $masksCovered = [];
-                foreach ($counts as $grouping => $num) {
-                    $masksCovered[$grouping] = $num > 1 ? 'rollup' : 'flat';
-                }
+                $counts[$grouping]++;
+            }
+            $masksCovered = [];
+            foreach ($counts as $grouping => $num) {
+                $masksCovered[$grouping] = $num > 1 ? 'rollup' : 'flat';
             }
             return $masksCovered;
 
@@ -74,6 +82,21 @@ class BaseGrouper implements Grouper
         }
         arsort($masks);
         return $masks;
+    }
+
+    /**
+     * @param int $numDims
+     * @param array $masks
+     * @return bool $isValid
+     */
+    protected function inputValid($numDims, $masks) {
+        $isValid = true;
+        foreach($masks as $mask) {
+            if(!preg_match('/^([0-1]+)$/',$mask) or strlen($mask) != $numDims) {
+                $isValid = false;
+            }
+        }
+        return $isValid;
     }
 
     /**
@@ -115,7 +138,8 @@ class BaseGrouper implements Grouper
         }
         arsort($coverageScores);
         //pick the winner
-        $winner = reset(array_keys($coverageScores));
+        $scoreKeys = array_keys($coverageScores);
+        $winner = reset($scoreKeys);
         foreach ($overlapSets[$winner] as $binaryMask) {
             $return[$binaryMask] = $winner;
         }
