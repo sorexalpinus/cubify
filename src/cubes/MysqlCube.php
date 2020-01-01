@@ -2,6 +2,7 @@
 
 namespace Cubify\Cubes;
 
+use Cubify\Exceptions\CubifyException;
 use Cubify\Groupers\BaseGrouper;
 use Cubify\Groupers\Grouper;
 use mysqli;
@@ -51,6 +52,7 @@ class MysqlCube implements SqlCube
 
     /**
      * @return Grouper $grouper
+     * @throws CubifyException
      */
     public function getGrouper() {
         if(!isset($this->grouper)) {
@@ -70,6 +72,7 @@ class MysqlCube implements SqlCube
 
     /**
      * @return string $cubeQuery
+     * @throws CubifyException
      */
     public function getCubeQuery()
     {
@@ -116,6 +119,7 @@ class MysqlCube implements SqlCube
 
     /**
      * @return $this
+     * @throws CubifyException
      */
     public function runQuery()
     {
@@ -129,6 +133,12 @@ class MysqlCube implements SqlCube
     public function getResult()
     {
         return $this->result;
+    }
+
+    protected function getBlankSanitizedQueryTemplate() {
+        return 'SELECT 
+                     :columns
+                FROM (:baseQuery)';
     }
 
     /**
@@ -158,6 +168,26 @@ class MysqlCube implements SqlCube
                 GROUP BY :groupingSequence';
     }
 
+    protected function sanitizeBlanks($baseQuery, $dimColumns, $measureColumns) {
+        $columns = [];
+        if(is_array($dimColumns)) {
+            foreach (array_keys($dimColumns) as $colName) {
+                $columns[] = 'IFNULL(`'.$colName.'`,\'(blank)\') AS `'.$colName.'`';
+            }
+        }
+        if(is_array($measureColumns)) {
+            foreach(array_keys($measureColumns) as $colName) {
+                $columns[] = '`'.$colName.'` AS `'.$colName.'`';
+            }
+        }
+        $sanitizedQuery = '';
+        if(sizeof($columns) > 0) {
+            $columns = implode(',',$columns);
+            $sanitizedQuery = str_replace([':columns',':baseQuery'],[$columns,$baseQuery],$this->getBlankSanitizedQueryTemplate());
+        }
+        return $sanitizedQuery;
+    }
+
     /**
      * @param string $baseQuery
      * @param int $position
@@ -177,10 +207,11 @@ class MysqlCube implements SqlCube
         $selectMeasures = implode(',', $measureColumns);
         $withRollup = $groupType == 'rollup' ? ' WITH ROLLUP ' : '';
         $baseQueryWrapped = '(' . $baseQuery . ') baseQuery' . ($position + 1) . ' ';
+        $baseQuerySanitized = '('.$this->sanitizeBlanks($baseQueryWrapped, $dimColumns, $measureColumns).') baseQuery0'.($position + 1) . ' ';
         $groupSequence = implode(',', $groupSequence);
         return str_replace(
             [':dimensions', ':measures', ':baseQuery', ':groupingSequence', ':withRollup'],
-            [$selectDimensions, $selectMeasures, $baseQueryWrapped, $groupSequence, $withRollup],
+            [$selectDimensions, $selectMeasures, $baseQuerySanitized, $groupSequence, $withRollup],
             $this->getSubQueryTemplate()
         );
     }
