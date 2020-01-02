@@ -54,9 +54,10 @@ class MysqlCube implements SqlCube
      * @return Grouper $grouper
      * @throws CubifyException
      */
-    public function getGrouper() {
-        if(!isset($this->grouper)) {
-            $this->grouper = new BaseGrouper(count($this->dimColumns),$this->masks);
+    public function getGrouper()
+    {
+        if (!isset($this->grouper)) {
+            $this->grouper = new BaseGrouper(count($this->dimColumns), $this->masks);
         }
         return $this->grouper;
     }
@@ -65,7 +66,8 @@ class MysqlCube implements SqlCube
      * @param Grouper $grouper
      * @return $this
      */
-    public function setGrouper($grouper) {
+    public function setGrouper($grouper)
+    {
         $this->grouper = $grouper;
         return $this;
     }
@@ -128,14 +130,71 @@ class MysqlCube implements SqlCube
     }
 
     /**
+     * @return int $cartesianCount
+     * @throws CubifyException
+     */
+    public function getCartesianCount()
+    {
+        $countTemplate = 'SELECT COUNT(DISTINCT :column) AS dimCount FROM (:baseQuery) base';
+        $dimCount = [];
+        foreach ($this->dimColumns as $dimColumn) {
+            $dimCountQuery = str_replace([':column', ':baseQuery'], [$dimColumn, $this->baseQuery], $countTemplate);
+            $result = $this->connection->query($dimCountQuery);
+            if ($result) {
+                $row = $result->fetch_assoc();
+                $dimCount[] = $row['dimCount'];
+            } else {
+                throw new CubifyException('Dimension count query failed');
+            }
+        }
+        $cartesianCount = 0;
+        foreach ($this->masks as $mask) {
+            $mComb = 1;
+            $m = str_split($mask);
+            foreach ($m as $key => $bin) {
+                $mComb *= $bin ? $dimCount[$key] : 1;
+            }
+            $cartesianCount += $mComb;
+        }
+        return $cartesianCount;
+    }
+
+
+    /**
      * @return bool|mysqli_result
+     * @throws CubifyException
      */
     public function getResult()
     {
-        return $this->result;
+        if (!isset($this->result)) {
+            $this->runQuery();
+        }
+        if (isset($this->result)) {
+            return $this->result;
+        } else {
+            throw new CubifyException('Could not provide MySQL result - the result is empty');
+        }
+
     }
 
-    protected function getBlankSanitizedQueryTemplate() {
+    /**
+     * @return array
+     * @throws CubifyException
+     */
+    public function getResultDataset()
+    {
+        $ds = [];
+        $result = $this->getResult();
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $ds[] = $row;
+            }
+        }
+        return $ds;
+    }
+
+    protected function getBlankSanitizedQueryTemplate()
+    {
         return 'SELECT 
                      :columns
                 FROM (:baseQuery)';
@@ -168,22 +227,23 @@ class MysqlCube implements SqlCube
                 GROUP BY :groupingSequence';
     }
 
-    protected function sanitizeBlanks($baseQuery, $dimColumns, $measureColumns) {
+    protected function sanitizeBlanks($baseQuery, $dimColumns, $measureColumns)
+    {
         $columns = [];
-        if(is_array($dimColumns)) {
+        if (is_array($dimColumns)) {
             foreach (array_keys($dimColumns) as $colName) {
-                $columns[] = 'IFNULL(`'.$colName.'`,\'(blank)\') AS `'.$colName.'`';
+                $columns[] = 'IFNULL(`' . $colName . '`,\'(blank)\') AS `' . $colName . '`';
             }
         }
-        if(is_array($measureColumns)) {
-            foreach(array_keys($measureColumns) as $colName) {
-                $columns[] = '`'.$colName.'` AS `'.$colName.'`';
+        if (is_array($measureColumns)) {
+            foreach (array_keys($measureColumns) as $colName) {
+                $columns[] = '`' . $colName . '` AS `' . $colName . '`';
             }
         }
         $sanitizedQuery = '';
-        if(sizeof($columns) > 0) {
-            $columns = implode(',',$columns);
-            $sanitizedQuery = str_replace([':columns',':baseQuery'],[$columns,$baseQuery],$this->getBlankSanitizedQueryTemplate());
+        if (sizeof($columns) > 0) {
+            $columns = implode(',', $columns);
+            $sanitizedQuery = str_replace([':columns', ':baseQuery'], [$columns, $baseQuery], $this->getBlankSanitizedQueryTemplate());
         }
         return $sanitizedQuery;
     }
@@ -207,7 +267,7 @@ class MysqlCube implements SqlCube
         $selectMeasures = implode(',', $measureColumns);
         $withRollup = $groupType == 'rollup' ? ' WITH ROLLUP ' : '';
         $baseQueryWrapped = '(' . $baseQuery . ') baseQuery' . ($position + 1) . ' ';
-        $baseQuerySanitized = '('.$this->sanitizeBlanks($baseQueryWrapped, $dimColumns, $measureColumns).') baseQuery0'.($position + 1) . ' ';
+        $baseQuerySanitized = '(' . $this->sanitizeBlanks($baseQueryWrapped, $dimColumns, $measureColumns) . ') baseQuery0' . ($position + 1) . ' ';
         $groupSequence = implode(',', $groupSequence);
         return str_replace(
             [':dimensions', ':measures', ':baseQuery', ':groupingSequence', ':withRollup'],

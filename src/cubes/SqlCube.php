@@ -8,5 +8,7 @@ interface SqlCube
 
     public function getResult();
 
+    public function getResultDataset();
+
     public function getCubeQuery();
 }
