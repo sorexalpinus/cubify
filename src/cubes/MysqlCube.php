@@ -15,7 +15,12 @@ use mysqli_result;
  */
 class MysqlCube implements SqlCube
 {
+    use Sql;
+
     const TOTAL = 'TOTAL';
+
+    protected $totalKeyWord = 'TOTAL';
+    protected $blankKeyWord = '(blank)';
 
     /** @var int $groupConcatMaxLength Maximum length of concatenated string for MySQL 32-bit version */
     protected $groupConcatMaxLength = 4294967295;
@@ -43,6 +48,7 @@ class MysqlCube implements SqlCube
      * @param array $masks
      * @param array $dimColumns
      * @param array $measureColumns
+     * @throws CubifyException
      */
     public function __construct($connection, $baseQuery, $masks, $dimColumns, $measureColumns)
     {
@@ -55,19 +61,24 @@ class MysqlCube implements SqlCube
     }
 
     /**
-     * In case GROUP_CONCAT MySQL function is used, set maximum lenght of concatenated string to maximum to prevent overflow.
+     * In case GROUP_CONCAT MySQL function is used, set maximum length of concatenated string to maximum to prevent overflow.
      *
      * @return $this
+     * @throws CubifyException
      */
     protected function setMysqlVars()
     {
         if (in_array('GROUP_CONCAT', $this->measureColumns)) {
-            $template = 'SET SESSION group_concat_max_len = :maxLength';
-            $query = str_replace(':maxLength', $this->groupConcatMaxLength, $template);
-            $this->connection->query($query);
+            $query = $this->buildQuery('set_session_var', ['var' => 'group_concat_max_len', 'value' => $this->groupConcatMaxLength]);
+            $result = $this->connection->query($query);
+            if (!$result) {
+                throw new CubifyException('Could not set mysql session variable group_concat_max_length');
+            }
         }
+
         return $this;
     }
+
 
     /**
      * Get grouper object.
@@ -137,14 +148,19 @@ class MysqlCube implements SqlCube
         }
         $fullGrouping = implode(',', $fullGrouping);
         $measureCols = implode(',', $measureCols);
-        $mainQuery = str_replace(
-            [':maskHash', ':dimensions', ':measures', ':subQuery', ':groupingSequence'],
-            [$maskHash, $dimCols, $measureCols, $subQuery, $fullGrouping], $this->getMainQueryTemplate());
-        return $mainQuery;
+
+        return $this->buildQuery('main', [
+            'maskHash' => $maskHash,
+            'dimensions' => $dimCols,
+            'measures' => $measureCols,
+            'subQuery' => $subQuery,
+            'groupingSequence' => $fullGrouping
+        ]);
     }
 
     /**
-     * Execute cube query and return resulting dataset. If cube query is empty it is created and set in the process.
+     * Execute cube query and return resulting dataset.
+     * If cube query is empty it is created and set in the process.
      *
      * @return $this
      * @throws CubifyException
@@ -156,7 +172,8 @@ class MysqlCube implements SqlCube
     }
 
     /**
-     * Count all possible combinations of dimensions values (cartesian product). Additional sql queries are executed in the process.
+     * Count all possible combinations of dimensions values (cartesian product).
+     * Additional sql queries are executed in the process.
      *
      * @return int $cartesianCount
      * @throws CubifyException
@@ -189,7 +206,8 @@ class MysqlCube implements SqlCube
 
 
     /**
-     * Return MysqlResult object for cube query. If cube query is empty it is created and executed.
+     * Return MysqlResult object for cube query.
+     * If cube query is empty it is created and executed.
      *
      * @return bool|mysqli_result
      * @throws CubifyException
@@ -208,7 +226,8 @@ class MysqlCube implements SqlCube
     }
 
     /**
-     * Get final table-like dataset as an array. If cube query is empty it is created and executed.
+     * Get final table-like dataset as an array.
+     * If cube query is empty it is created and executed.
      *
      * @return array
      * @throws CubifyException
@@ -226,48 +245,6 @@ class MysqlCube implements SqlCube
     }
 
     /**
-     * Get sql template for "sanitized query"
-     * @return string
-     */
-    protected function getBlankSanitizedQueryTemplate()
-    {
-        return 'SELECT 
-                     :columns
-                FROM (:baseQuery)';
-    }
-
-    /**
-     * Get sql template for sub-query.
-     *
-     * @return string $subQueryTemplate
-     */
-    protected function getSubQueryTemplate()
-    {
-        return 'SELECT 
-                     :dimensions,
-                     :measures
-                FROM (:baseQuery)
-            GROUP BY :groupingSequence :withRollup';
-    }
-
-    /**
-     * Get sql template for sub-query.
-     *
-     * @return string $mainQueryTemplate
-     */
-    protected function getMainQueryTemplate()
-    {
-        return 'SELECT 
-                     :maskHash,
-                     :dimensions,
-                     :measures           
-                FROM (
-                     :subQuery
-                ) base
-                GROUP BY :groupingSequence';
-    }
-
-    /**
      *
      * Replace NULL values with defined string (blank) in the base query.
      * This prevents the null values produced by base query to be mixed with NULL values produced by GROUP WITH ROLLUP (these represent totals)
@@ -276,6 +253,7 @@ class MysqlCube implements SqlCube
      * @param $dimColumns
      * @param $measureColumns
      * @return mixed|string
+     * @throws CubifyException
      */
     protected function sanitizeBlanks($baseQuery, $dimColumns, $measureColumns)
     {
@@ -290,12 +268,11 @@ class MysqlCube implements SqlCube
                 $columns[] = '`' . $colName . '` AS `' . $colName . '`';
             }
         }
-        $sanitizedQuery = '';
-        if (sizeof($columns) > 0) {
-            $columns = implode(',', $columns);
-            $sanitizedQuery = str_replace([':columns', ':baseQuery'], [$columns, $baseQuery], $this->getBlankSanitizedQueryTemplate());
-        }
-        return $sanitizedQuery;
+        return $this->buildQuery('blanks', [
+                'columns' => implode(',', $columns),
+                'baseQuery' => $baseQuery
+            ]
+        );
     }
 
     /**
@@ -308,6 +285,7 @@ class MysqlCube implements SqlCube
      * @param array $dimColumns
      * @param array $measureColumns
      * @return mixed
+     * @throws CubifyException
      */
     protected function getSubQuery($baseQuery, $position, $groupSequence, $groupType, $dimColumns, $measureColumns)
     {
@@ -321,11 +299,13 @@ class MysqlCube implements SqlCube
         $baseQueryWrapped = '(' . $baseQuery . ') baseQuery' . ($position + 1) . ' ';
         $baseQuerySanitized = '(' . $this->sanitizeBlanks($baseQueryWrapped, $dimColumns, $measureColumns) . ') baseQuery0' . ($position + 1) . ' ';
         $groupSequence = implode(',', $groupSequence);
-        return str_replace(
-            [':dimensions', ':measures', ':baseQuery', ':groupingSequence', ':withRollup'],
-            [$selectDimensions, $selectMeasures, $baseQuerySanitized, $groupSequence, $withRollup],
-            $this->getSubQueryTemplate()
-        );
+        return $this->buildQuery('sub', [
+            'dimensions' => $selectDimensions,
+            'measures' => $selectMeasures,
+            'baseQuery' => $baseQuerySanitized,
+            'groupingSequence' => $groupSequence,
+            'withRollup' => $withRollup
+        ]);
     }
 
     /**
