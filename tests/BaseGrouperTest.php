@@ -1,8 +1,8 @@
 <?php
 
-namespace groupers;
+namespace Cubify\Tests;
 
-use Cubify\Exceptions\CubifyException;
+use Cubify\Exceptions\CubifyException as CubifyExceptionAlias;
 use Cubify\Groupers\BaseGrouper;
 use PHPUnit\Framework\TestCase;
 
@@ -10,8 +10,7 @@ class BaseGrouperTest extends TestCase
 {
 
     /**
-     * @return BaseGrouper
-     * @throws CubifyException
+     * @throws CubifyExceptionAlias
      */
     public function test__construct() {
         $grouper = new BaseGrouper(4,['1111','1100']);
@@ -19,20 +18,20 @@ class BaseGrouperTest extends TestCase
     }
 
     /**
-     * @throws CubifyException
+     * @throws CubifyExceptionAlias
      */
     public function test__construct_exc()
     {
-        $this->expectException(CubifyException::class);
+        $this->expectException(CubifyExceptionAlias::class);
         new BaseGrouper(4,['111','110']);
     }
 
     /**
-     * @throws CubifyException
+     * @throws CubifyExceptionAlias
      */
     public function test__construct_exc2()
     {
-        $this->expectException(CubifyException::class);
+        $this->expectException(CubifyExceptionAlias::class);
         new BaseGrouper(3,['11','110']);
     }
 
@@ -51,7 +50,7 @@ class BaseGrouperTest extends TestCase
      * @param int $numDims
      * @param array $masks
      * @param array $groupings
-     * @throws CubifyException
+     * @throws CubifyExceptionAlias
      */
     public function testGetGroupings($numDims,$masks,$groupings)
     {
@@ -80,7 +79,7 @@ class BaseGrouperTest extends TestCase
      * @param $numDims
      * @param $masks
      * @param $allMasks
-     * @throws CubifyException
+     * @throws CubifyExceptionAlias
      */
     public function testGetAllMasks($numDims,$masks,$allMasks)
     {

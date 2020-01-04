@@ -19,8 +19,8 @@ class MysqlCube implements SqlCube
 
     const TOTAL = 'TOTAL';
 
-    protected $totalKeyWord = 'TOTAL';
-    protected $blankKeyWord = '(blank)';
+//    protected $totalKeyWord = 'TOTAL';
+//    protected $blankKeyWord = '(blank)';
 
     /** @var int $groupConcatMaxLength Maximum length of concatenated string for MySQL 32-bit version */
     protected $groupConcatMaxLength = 4294967295;
@@ -115,7 +115,7 @@ class MysqlCube implements SqlCube
     public function getCubeQuery()
     {
 
-        $groupings = $this->getGrouper()->getGroupings('short');
+        $groupings = $this->getGrouper()->getGroupings();
         $namedGroupings = $this->getNamedGroupings($groupings, $this->dimColumns);
         $dimCols = [];
         foreach ($this->dimColumns as $column) {

@@ -43,7 +43,7 @@ trait Sql
         $template = '';
         try {
             $name = strpos($name, '.sql' !== false) ? $name : $name . '.sql';
-            $path = SQL_PATH . DS . $name;
+            $path = CUBIFY_SQL_PATH . DS . $name;
             if (file_exists($path)) {
                 $template = file_get_contents($path);
                 if ($template) {
