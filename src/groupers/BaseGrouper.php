@@ -4,6 +4,14 @@ namespace Cubify\Groupers;
 
 use Cubify\Exceptions\CubifyException;
 
+/**
+ * Class BaseGrouper
+ *
+ * Basic implementation of grouper.
+ *
+ * @see Grouper interface
+ * @package Cubify\Groupers
+ */
 class BaseGrouper implements Grouper
 {
     /** @var int $numDims number of dimensions */
@@ -14,23 +22,32 @@ class BaseGrouper implements Grouper
     /**
      * GroupingsGenerator constructor.
      *
-     * @param int $numDims
-     * @param array $masks
+     * @param int $numDims Number of dimensions.
+     * @param array|string $masks Masks to cover as an array or 'all' for all possible combinations.
      * @throws CubifyException
      */
     public function __construct($numDims, $masks)
     {
-        if($this->inputValid($numDims, $masks)) {
+        if ($this->inputValid($numDims, $masks)) {
             $this->numDims = $numDims;
-            $this->setMasks($masks);
-        }
-        else {
-            throw new CubifyException('Invalid definition - inconsistency in number of dimensions and masks');
+            if ($masks == 'all') {
+                $masks = $this->getAllMasks();
+            }
+            $this->addTopLevelMask($masks);
+            $this->sortMasks($masks);
+            $this->masks = $masks;
+        } else {
+            throw new CubifyException('Invalid definition - inconsistency in number of dimensions and masks or other invalid input.');
         }
     }
 
 
     /**
+     * Get groupings that have to be used in an sql query in order to cover all masks.
+     * Example output:
+     *      123  => rollup : (group by 1st,2nd and 3rd column in this order and use rollup)
+     *      3    => flat : (group by 3rd column with no rollup)
+     *
      * @return array $groupings
      */
     public function getGroupings()
@@ -70,6 +87,10 @@ class BaseGrouper implements Grouper
     }
 
     /**
+     * Get all possible masks that can be created for given number of dimensions
+     * Output example:
+     * Having 2, the masks are as follows: 11,10,01,00
+     *
      * @return  array $masks
      */
     public function getAllMasks()
@@ -77,44 +98,44 @@ class BaseGrouper implements Grouper
         $masks = [];
         $array = range(1, $this->numDims);
         $powerSet = $this->getPowerSet($array);
-        foreach ($powerSet as $key => $comb) {
-            $masks[] = $this->getMaskForCombination($comb);
+        foreach ($powerSet as $combination) {
+            $masks[] = $this->getMaskForCombination($combination);
         }
         arsort($masks);
         return $masks;
     }
 
     /**
+     * Validate user input consistency.
+     *
      * @param int $numDims
      * @param array $masks
      * @return bool $isValid
      */
-    protected function inputValid($numDims, $masks) {
+    protected function inputValid($numDims, $masks)
+    {
         $isValid = true;
-        foreach($masks as $mask) {
-            if(!preg_match('/^([0-1]+)$/',$mask) or strlen($mask) != $numDims) {
-                $isValid = false;
+        if (is_array($masks)) {
+            foreach ($masks as $mask) {
+                if (!preg_match('/^([0-1]+)$/', $mask) or strlen($mask) != $numDims) {
+                    $isValid = false;
+                }
             }
+        } elseif (!is_string($masks) and $masks == 'all') {
+            $isValid = true;
+        } else {
+            $isValid = false;
         }
+
         return $isValid;
     }
 
     /**
-     * @param array|string $masks array of binary masks, e.g: [1111,1110,1011,0110] or "all" for all possible masks
-     * @return $this
-     */
-    protected function setMasks($masks)
-    {
-        if (is_array($masks)) {
-            $this->masks = $this->prepareMasksToCover($masks);
-        } elseif (is_string($masks) and $masks == 'all') {
-            $masks = $this->getAllMasks();
-            $this->masks = $this->prepareMasksToCover($masks);
-        }
-        return $this;
-    }
-
-    /**
+     * Try to cover maximum masks with a single grouping
+     *
+     * Example: Mask 111 will be covered by grouping 123 and will also cover masks 110,100 and 000
+     * Example output: [111=> 123, 110 => 123, 100 => 123]
+     *
      * @param string $mask mask binary hash, e.g. 1101
      * @param array $masksCovered
      * @return array
@@ -147,6 +168,12 @@ class BaseGrouper implements Grouper
     }
 
     /**
+     * Get all possible groupings that will cover a mask.
+     * Example:
+     * mask 11 will be covered by:
+     * 12 - this will also cover 10 and 11
+     * 21 - this will also cover 01 and 00
+     *
      * @param string $mask
      * @return array $groupings
      */
@@ -164,52 +191,30 @@ class BaseGrouper implements Grouper
     }
 
     /**
-     * @param array $combination
-     * @return string $mask
+     * Get numbered grouping sequence from binary mask.
+     * E.g.: mask 111 will result in 123
+     *
+     * @param string $mask
+     * @return string $grouping
      */
-    protected function getMaskForCombination($combination)
+    protected function getGroupingFromMask($mask)
     {
-        $base = str_repeat('0', $this->numDims);
-        $mask = $base;
-        foreach ($combination as $pos) {
-            $mask[$pos - 1] = '1';
+        $grouping = '';
+        $mask = str_split($mask);
+        foreach ($mask as $pos => $val) {
+            if ($val == '1') {
+                $grouping .= $pos + 1;
+            }
         }
-        return $mask;
+        return $grouping;
     }
 
     /**
-     * @return string $maskHash
-     */
-    protected function getTopLevelMask()
-    {
-        return str_repeat('1', $this->numDims);
-    }
-
-    /**
-     * @param array $masks
-     * @return array $masks
-     */
-    protected function prepareMasksToCover($masks)
-    {
-        $topLevelMask = $this->getTopLevelMask();
-        if (!in_array($topLevelMask, $masks)) {
-            $masks[] = $topLevelMask;
-        }
-        $m = [];
-        foreach ($masks as $key => $val) {
-            $m[$val] = array_sum(str_split($val));
-        }
-        arsort($m);
-        $masks = array_keys($m);
-        foreach ($masks as $k => $v) {
-            $masks[$k] = (string)$v;
-        }
-        return $masks;
-    }
-
-    /**
-     * @param string $grouping e.g. 2134
-     * @return array $rollupBinarySet e.g: 1111,1110,1100,0100
+     * Get masks that are covered by a grouping when used with ROLLUP
+     * E.g.: grouping 12 will cover 11,10,00
+     *
+     * @param string $grouping
+     * @return array $rollupMasks
      */
     protected function getRollupMasks($grouping)
     {
@@ -230,26 +235,76 @@ class BaseGrouper implements Grouper
     }
 
     /**
-     * @param string $mask
-     * @return string $grouping
+     * Get mask that is covered by a single combination (grouping)
+     * E.g. having 3 dimensions, combination (3,2) results in mask 011
+     *
+     * @param array $combination
+     * @return string $mask
      */
-    protected function getGroupingFromMask($mask)
+    protected function getMaskForCombination($combination)
     {
-        $g = '';
-        $mask = str_split($mask);
-        foreach ($mask as $pos => $val) {
-            if ($val == '1') {
-                $g .= $pos + 1;
-            }
+        $base = str_repeat('0', $this->numDims);
+        $mask = $base;
+        foreach ($combination as $pos) {
+            $mask[$pos - 1] = '1';
         }
-        return $g;
+        return $mask;
     }
 
     /**
+     * With given number of dimensions find mask that represents finiest grouping (consists of pure "ones")
+     * E.g. having 3 dimensions, the top level mask is 111
+     *
+     * @return string $maskHash
+     */
+    protected function getTopLevelMask()
+    {
+        return str_repeat('1', $this->numDims);
+    }
+
+    /**
+     * Add top level mask into set of masks provided by user.
+     *
+     * @param $masks
+     * @return $this
+     */
+    protected function addTopLevelMask(&$masks)
+    {
+        $topLevelMask = $this->getTopLevelMask();
+        if (!in_array($topLevelMask, $masks)) {
+            $masks[] = $topLevelMask;
+        }
+        return $this;
+    }
+
+    /**
+     * Sort the masks so that those that require most column groupings are at the top.
+     * Example output: 111,011,010,000
+     *
+     * @param array $masks
+     * @return $this
+     */
+    protected function sortMasks(&$masks)
+    {
+        foreach ($masks as $key => $val) {
+            $m[$val] = array_sum(str_split($val));
+        }
+        arsort($m);
+        $masks = array_keys($m);
+        foreach ($masks as $k => $v) {
+            $masks[$k] = (string)$v;
+        }
+        return $this;
+    }
+
+
+    /**
+     * Find permutations (all order combinations) of an array.
+     * E.g.: 123 will result in (123,213,132,312,231,321)
+     *
      * @param $return
      * @param $items
      * @param array $perms
-     * @return bool
      */
     protected function permute(&$return, $items, $perms = [])
     {
@@ -264,10 +319,12 @@ class BaseGrouper implements Grouper
                 $this->permute($return, $newItems, $newPerms);
             }
         }
-        return true;
     }
 
     /**
+     * Get power set (all combinations regardless of order) for an array.
+     * E.g. (1,2) will result in ((),(1),(2),(1,2))
+     *
      * @param array $array
      * @return array $results
      */
