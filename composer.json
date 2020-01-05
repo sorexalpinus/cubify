@@ -9,5 +9,32 @@
     "phpoffice/phpspreadsheet": "^1.10",
     "ext-zip": "*",
     "pear/console_table": "^1.3"
+  },
+  "keywords": [
+    "olap",
+    "cube",
+    "pivot",
+    "mysql",
+    "php7"
+  ],
+  "description": "Cubify your SQL query",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "sorexalpinus",
+      "email": "jhlatky@gmail.com"
+    }
+  ],
+  "autoload": {
+    "files": ["bootstrap.php"],
+    "psr-4": {
+      "WatchTower\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WatchTower\\": "tests/"
+    }
   }
 }
