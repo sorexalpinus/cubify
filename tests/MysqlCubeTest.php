@@ -32,7 +32,7 @@ class MysqlCubeTest extends TestCase
             }
             $conn->selectDb($dbName);
             $query = Mysql::getQuery(false);
-            $masks = ['111', '110', '101'];
+            $masks = ['111', '110', '011'];
             $dims = ['Transect', 'Year', 'Species'];
             $measures = ['Snow depth' => 'GROUP_CONCAT', 'Num animals' => 'GROUP_CONCAT'];
             $this->cube = new MysqlCube($conn, $query, $masks, $dims, $measures);
@@ -68,7 +68,7 @@ class MysqlCubeTest extends TestCase
         $result = $this->cube->getResult();
         $this->assertInstanceOf(mysqli_result::class,$result);
         $this->assertSame(6,$result->field_count);
-        $this->assertSame(357,$result->num_rows);
+        $this->assertSame(287,$result->num_rows);
     }
 
     /**
@@ -79,7 +79,7 @@ class MysqlCubeTest extends TestCase
         $dataset = $this->cube->getResultDataset();
         $this->assertIsArray($dataset);
         $this->assertNotEmpty($dataset);
-        $this->assertCount(357,$dataset);
+        $this->assertCount(287,$dataset);
     }
 
     /**
@@ -89,19 +89,19 @@ class MysqlCubeTest extends TestCase
     {
         $cartesianCount = $this->cube->getCartesianCount();
         $this->assertIsInt($cartesianCount);
-        $this->assertSame(605,$cartesianCount);
+        $this->assertSame(501,$cartesianCount);
     }
 
     /**
      * @return string $expectedQuery
      */
     public function getExpectedQuery() {
-        return 'SELECT
-    CONCAT(IF(`Transect` IS NULL,0,1),IF(`Year` IS NULL,0,1),IF(`Species` IS NULL,0,1)) as `maskHash`,
-    IFNULL(`Transect`, "TOTAL") AS `Transect`,IFNULL(`Year`, "TOTAL") AS `Year`,IFNULL(`Species`, "TOTAL") AS `Species`,
-    `Snow depth` AS `Snow depth`,`Num animals` AS `Num animals`
-FROM (
-         SELECT
+        return 'SELECT *
+FROM (SELECT CONCAT(IF(`Transect` IS NULL,0,1),IF(`Year` IS NULL,0,1),IF(`Species` IS NULL,0,1)) as `Mask`,
+             IFNULL(`Transect`, "(total)") AS `Transect`,IFNULL(`Year`, "(total)") AS `Year`,IFNULL(`Species`, "(total)") AS `Species`,
+             `Snow depth` AS `Snow depth`,`Num animals` AS `Num animals`
+      FROM (
+               SELECT
     `Transect` AS `Transect`,`Year` AS `Year`,`Species` AS `Species`,
     GROUP_CONCAT(`Snow depth`) AS `Snow depth`,GROUP_CONCAT(`Num animals`) AS `Num animals`
 FROM ((SELECT
@@ -118,7 +118,7 @@ FROM ((
                      LEFT JOIN banff_transects bt on d.transect_id = bt.id
                      LEFT JOIN banff_transect_intervals bti on d.transect_interval_id = bti.id WHERE d.species_id IS NOT NULL) baseQuery1 )) baseQuery01 )
 GROUP BY Transect,Year,Species  WITH ROLLUP  UNION SELECT
-    `Transect` AS `Transect`,NULL as `Year`,`Species` AS `Species`,
+    NULL as `Transect`,`Year` AS `Year`,`Species` AS `Species`,
     GROUP_CONCAT(`Snow depth`) AS `Snow depth`,GROUP_CONCAT(`Num animals`) AS `Num animals`
 FROM ((SELECT
     IFNULL(`Transect`,\'(blank)\') AS `Transect`,IFNULL(`Year`,\'(blank)\') AS `Year`,IFNULL(`Species`,\'(blank)\') AS `Species`,`Snow depth` AS `Snow depth`,`Num animals` AS `Num animals`
@@ -133,8 +133,9 @@ FROM ((
                      LEFT JOIN banff_species bs on d.species_id = bs.id
                      LEFT JOIN banff_transects bt on d.transect_id = bt.id
                      LEFT JOIN banff_transect_intervals bti on d.transect_interval_id = bti.id WHERE d.species_id IS NOT NULL) baseQuery2 )) baseQuery02 )
-GROUP BY Transect,Species 
-         ) base
-GROUP BY base.`Transect`,base.`Year`,base.`Species`';
+GROUP BY Year,Species 
+               ) base1
+      GROUP BY `Transect`,`Year`,`Species`) base2
+WHERE `Mask` IN (111,110,011)';
     }
 }

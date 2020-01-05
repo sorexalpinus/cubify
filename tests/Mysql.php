@@ -174,7 +174,7 @@ class Mysql extends mysqli
     {
         $result = $this->real_query($query);
         if ($result) {
-            return new mysqli_result();
+            return new mysqli_result($this);
         } else {
             throw new CubifyException(sprintf('Mysql error: <pre>%s</pre>', $query));
         }
@@ -191,9 +191,35 @@ class Mysql extends mysqli
     {
         $result = $this->multi_query($query);
         if ($result) {
-            return new mysqli_result();
+            return new mysqli_result($this);
         } else {
             throw new CubifyException(sprintf('Mysql error: <pre>%s</pre>', $query));
+        }
+    }
+
+    /**
+     * Executes a query and returns dataset in form of console table.
+     *
+     * @param string $query
+     * @return string $table
+     * @throws CubifyException
+     */
+    public function getConsoleTable($query) {
+
+        $result = $this->query($query);
+        if($result) {
+            while($row = $result->fetch_assoc()) {
+                $row = array_map(function($val) {return is_null($val)?'NULL':$val;},$row);
+                $data[] = $row;
+            }
+            $tbl = new \Console_Table();
+            $header = array_shift($data);
+            $tbl->setHeaders(array_keys($header));
+            foreach ($data as $id => $row) {
+                $tbl->addRow($row);
+            }
+            $table = '<pre><code>' . $tbl->getTable() . '</code></pre>';
+            return $table;
         }
     }
 }

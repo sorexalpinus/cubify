@@ -17,7 +17,8 @@ class MysqlCube implements SqlCube
 {
     use Sql;
 
-    const TOTAL = 'TOTAL';
+    const TOTAL = '(total)';
+    const BLANK = '(blank)';
 
 //    protected $totalKeyWord = 'TOTAL';
 //    protected $blankKeyWord = '(blank)';
@@ -137,24 +138,25 @@ class MysqlCube implements SqlCube
             $maskHash[] = 'IF(`' . $column . '` IS NULL,0,1)';
         }
         $dimCols = implode(',', $dimCols);
-        $maskHash = 'CONCAT(' . implode(',', $maskHash) . ') as `maskHash`';
+        $maskHash = 'CONCAT(' . implode(',', $maskHash) . ') as `Mask`';
         $measureCols = [];
         foreach ($this->measureColumns as $column => $function) {
             $measureCols[] = '`' . $column . '` AS `' . $column . '`';
         }
         $fullGrouping = [];
         foreach ($this->dimColumns as $column) {
-            $fullGrouping[] = 'base.`' . $column . '`';
+            $fullGrouping[] = '`' . $column . '`';
         }
         $fullGrouping = implode(',', $fullGrouping);
         $measureCols = implode(',', $measureCols);
-
+        $masks = implode(',',$this->masks);
         return $this->buildQuery('main', [
             'maskHash' => $maskHash,
             'dimensions' => $dimCols,
             'measures' => $measureCols,
             'subQuery' => $subQuery,
-            'groupingSequence' => $fullGrouping
+            'groupingSequence' => $fullGrouping,
+            'masks' => $masks
         ]);
     }
 
@@ -260,7 +262,7 @@ class MysqlCube implements SqlCube
         $columns = [];
         if (is_array($dimColumns)) {
             foreach (array_keys($dimColumns) as $colName) {
-                $columns[] = 'IFNULL(`' . $colName . '`,\'(blank)\') AS `' . $colName . '`';
+                $columns[] = 'IFNULL(`' . $colName . '`,\''.self::BLANK.'\') AS `' . $colName . '`';
             }
         }
         if (is_array($measureColumns)) {
