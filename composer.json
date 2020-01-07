@@ -29,12 +29,12 @@
   "autoload": {
     "files": ["bootstrap.php"],
     "psr-4": {
-      "WatchTower\\": "src/"
+      "Cubify\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "WatchTower\\": "tests/"
+      "Cubify\\": "tests/"
     }
   }
 }
