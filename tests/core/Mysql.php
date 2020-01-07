@@ -6,7 +6,7 @@
  * Time: 12:46
  */
 
-namespace Cubify\Tests;
+namespace Cubify\Tests\Core;
 
 use Cubify\Exceptions\CubifyException;
 use mysqli;

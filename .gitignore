@@ -22,10 +22,6 @@
 
 # Other #
 ############
-/vendor/
-/assets/
-/tests/files/
-index.php
-todo.txt
 .idea
-/tests/custom/
+/vendor/
+/dev/

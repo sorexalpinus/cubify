@@ -4,6 +4,7 @@ namespace Cubify\Tests;
 
 use Cubify\Cubes\MysqlCube;
 use Cubify\Exceptions\CubifyException;
+use Cubify\Tests\Core\Mysql;
 use mysqli_result;
 use PHPUnit\Framework\TestCase;
 
@@ -22,12 +23,12 @@ class MysqlCubeTest extends TestCase
     public function setUp()
     {
         try {
-            $config = require CUBIFY_TESTS_PATH . DS . 'default.config.php';
+            $config = require CUBIFY_TESTS_PATH . DS . 'db' . DS . 'default.config.php';
             $dbName = $config['db'];
             $conn = Mysql::getInstance($config);
 
             if (!$conn->dbExists($dbName)) {
-                $zipFilePath = CUBIFY_TESTS_PATH . DS . 'files' . DS . $dbName . '.zip';
+                $zipFilePath = CUBIFY_TESTS_PATH . DS . 'db' . DS . $dbName . '.zip';
                 $conn->importDb($zipFilePath);
             }
             $conn->selectDb($dbName);
@@ -56,8 +57,8 @@ class MysqlCubeTest extends TestCase
         $query = $this->cube->getCubeQuery();
         $this->assertIsString($query);
         $this->assertNotEmpty($query);
-        $this->assertStringContainsString('SELECT',$query);
-        $this->assertEquals($this->getExpectedQuery(),str_replace('\r\n','',$query));
+        $this->assertStringContainsString('SELECT', $query);
+        $this->assertEquals($this->getExpectedQuery(), str_replace('\r\n', '', $query));
     }
 
     /**
@@ -66,9 +67,9 @@ class MysqlCubeTest extends TestCase
     public function testGetResult()
     {
         $result = $this->cube->getResult();
-        $this->assertInstanceOf(mysqli_result::class,$result);
-        $this->assertSame(6,$result->field_count);
-        $this->assertSame(287,$result->num_rows);
+        $this->assertInstanceOf(mysqli_result::class, $result);
+        $this->assertSame(6, $result->field_count);
+        $this->assertSame(287, $result->num_rows);
     }
 
     /**
@@ -79,7 +80,7 @@ class MysqlCubeTest extends TestCase
         $dataset = $this->cube->getResultDataset();
         $this->assertIsArray($dataset);
         $this->assertNotEmpty($dataset);
-        $this->assertCount(287,$dataset);
+        $this->assertCount(287, $dataset);
     }
 
     /**
@@ -89,13 +90,14 @@ class MysqlCubeTest extends TestCase
     {
         $cartesianCount = $this->cube->getCartesianCount();
         $this->assertIsInt($cartesianCount);
-        $this->assertSame(501,$cartesianCount);
+        $this->assertSame(501, $cartesianCount);
     }
 
     /**
      * @return string $expectedQuery
      */
-    public function getExpectedQuery() {
+    public function getExpectedQuery()
+    {
         return 'SELECT *
 FROM (SELECT CONCAT(IF(`Transect` IS NULL,0,1),IF(`Year` IS NULL,0,1),IF(`Species` IS NULL,0,1)) as `Mask`,
              IFNULL(`Transect`, "(total)") AS `Transect`,IFNULL(`Year`, "(total)") AS `Year`,IFNULL(`Species`, "(total)") AS `Species`,
