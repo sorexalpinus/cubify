@@ -23,9 +23,9 @@
 # Other #
 ############
 /vendor/
-/functional_tests/
 /assets/
 /tests/files/
 index.php
 todo.txt
 .idea
+/tests/custom/
