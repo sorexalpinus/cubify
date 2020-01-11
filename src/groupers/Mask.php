@@ -97,4 +97,21 @@ trait Mask
     {
         return str_repeat('1', $numDims);
     }
+
+    /**
+     * Get mask that is covered by a single combination (grouping)
+     * E.g. having 3 dimensions, combination (3,2) results in mask 011
+     *
+     * @param array $combination
+     * @return string $mask
+     */
+    protected function getMaskForCombination($combination)
+    {
+        $base = str_repeat('0', $this->numDims);
+        $mask = $base;
+        foreach ($combination as $pos) {
+            $mask[$pos - 1] = '1';
+        }
+        return $mask;
+    }
 }
