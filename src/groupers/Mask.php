@@ -93,7 +93,7 @@ trait Mask
      * @param int $numDims Number of dimensions.
      * @return string $maskHash
      */
-    public function getTopLevelMask($numDims)
+    public function getAtomicMaskHash($numDims)
     {
         return str_repeat('1', $numDims);
     }

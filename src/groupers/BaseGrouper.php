@@ -250,7 +250,7 @@ class BaseGrouper implements Grouper
      */
     protected function addTopLevelMask(&$masks)
     {
-        $topLevelMask = $this->getTopLevelMask($this->numDims);
+        $topLevelMask = $this->getAtomicMaskHash($this->numDims);
         if (!in_array($topLevelMask, $masks)) {
             $masks[] = $topLevelMask;
         }
