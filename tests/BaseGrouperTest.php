@@ -13,7 +13,7 @@ class BaseGrouperTest extends TestCase
      * @throws CubifyExceptionAlias
      */
     public function test__construct() {
-        $grouper = new BaseGrouper(4,['1111','1100']);
+        $grouper = new BaseGrouper(['1111','1100']);
         $this->assertInstanceOf(BaseGrouper::class,$grouper);
     }
 
@@ -23,7 +23,7 @@ class BaseGrouperTest extends TestCase
     public function test__construct_exc()
     {
         $this->expectException(CubifyExceptionAlias::class);
-        new BaseGrouper(4,['111','110']);
+        new BaseGrouper(['1111','110']);
     }
 
     /**
@@ -32,7 +32,7 @@ class BaseGrouperTest extends TestCase
     public function test__construct_exc2()
     {
         $this->expectException(CubifyExceptionAlias::class);
-        new BaseGrouper(3,['11','110']);
+        new BaseGrouper(['11','110']);
     }
 
     /**
@@ -40,21 +40,20 @@ class BaseGrouperTest extends TestCase
      */
     public function getGroupingsProvider() {
         return [
-            [3,['111','001'],[312 => 'rollup']],
-            [4,['1101','0011','1100','0101'],[1243 => 'rollup',34 => 'flat',24 => 'flat']]
+            [['111','001'],[312 => 'rollup']],
+            [['1101','0011','1100','0101'],[1243 => 'rollup',34 => 'flat',24 => 'flat']]
         ];
     }
 
     /**
      * @dataProvider getGroupingsProvider
-     * @param int $numDims
      * @param array $masks
      * @param array $groupings
      * @throws CubifyExceptionAlias
      */
-    public function testGetGroupings($numDims,$masks,$groupings)
+    public function testGetGroupings($masks,$groupings)
     {
-        $grouper = new BaseGrouper($numDims,$masks);
+        $grouper = new BaseGrouper($masks);
         $this->assertSame($groupings,$grouper->getGroupings());
     }
 
@@ -83,8 +82,8 @@ class BaseGrouperTest extends TestCase
      */
     public function testGetAllMasks($numDims,$masks,$allMasks)
     {
-        $grouper = new BaseGrouper($numDims,$masks);
-        $this->assertSame($allMasks,array_values($grouper->getAllMasks()));
+        $grouper = new BaseGrouper($masks);
+        $this->assertSame($allMasks,array_values($grouper->getAllPossibleMasks($numDims)));
     }
 
 }

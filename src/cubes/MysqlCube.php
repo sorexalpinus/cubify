@@ -90,7 +90,7 @@ class MysqlCube implements SqlCube
     public function getGrouper()
     {
         if (!isset($this->grouper)) {
-            $this->grouper = new BaseGrouper(count($this->dimColumns), $this->masks);
+            $this->grouper = new BaseGrouper($this->masks);
         }
         return $this->grouper;
     }
@@ -149,7 +149,7 @@ class MysqlCube implements SqlCube
         }
         $fullGrouping = implode(',', $fullGrouping);
         $measureCols = implode(',', $measureCols);
-        $masks = implode(',',$this->masks);
+        $masks = implode(',', $this->masks);
         return $this->buildQuery('main', [
             'maskHash' => $maskHash,
             'dimensions' => $dimCols,
@@ -262,7 +262,7 @@ class MysqlCube implements SqlCube
         $columns = [];
         if (is_array($dimColumns)) {
             foreach (array_keys($dimColumns) as $colName) {
-                $columns[] = 'IFNULL(`' . $colName . '`,\''.self::BLANK.'\') AS `' . $colName . '`';
+                $columns[] = 'IFNULL(`' . $colName . '`,\'' . self::BLANK . '\') AS `' . $colName . '`';
             }
         }
         if (is_array($measureColumns)) {

@@ -25,7 +25,8 @@ interface Grouper
      * Output example:
      * Having 2, the masks are as follows: 11,10,01,00
      *
-     * @return  array $masks
+     * @param int $numDims
+     * @return array $masks
      */
-    public function getAllMasks();
+    public function getAllPossibleMasks($numDims);
 }

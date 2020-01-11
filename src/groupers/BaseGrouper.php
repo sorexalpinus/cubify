@@ -14,24 +14,26 @@ use Cubify\Exceptions\CubifyException;
  */
 class BaseGrouper implements Grouper
 {
+    use Mask;
+
     /** @var int $numDims number of dimensions */
     protected $numDims;
+
     /** @var array $masks all defined masks that we need to populate/calculate */
     protected $masks;
 
     /**
      * GroupingsGenerator constructor.
      *
-     * @param int $numDims Number of dimensions.
      * @param array|string $masks Masks to cover as an array or 'all' for all possible combinations.
      * @throws CubifyException
      */
-    public function __construct($numDims, $masks)
+    public function __construct($masks)
     {
-        if ($this->inputValid($numDims, $masks)) {
-            $this->numDims = $numDims;
+        $this->numDims = $this->getNumberOfDimensions($masks);
+        if ($this->inputValid($masks)) {
             if ($masks == 'all') {
-                $masks = $this->getAllMasks();
+                $masks = $this->getAllPossibleMasks($this->numDims);
             }
             $this->addTopLevelMask($masks);
             $this->sortMasks($masks);
@@ -86,41 +88,22 @@ class BaseGrouper implements Grouper
         }
     }
 
-    /**
-     * Get all possible masks that can be created for given number of dimensions
-     * Output example:
-     * Having 2, the masks are as follows: 11,10,01,00
-     *
-     * @return  array $masks
-     */
-    public function getAllMasks()
-    {
-        $masks = [];
-        $array = range(1, $this->numDims);
-        $powerSet = $this->getPowerSet($array);
-        foreach ($powerSet as $combination) {
-            $masks[] = $this->getMaskForCombination($combination);
-        }
-        arsort($masks);
-        return $masks;
-    }
 
     /**
      * Validate user input consistency.
      *
-     * @param int $numDims
      * @param array $masks
      * @return bool $isValid
+     * @throws CubifyException
      */
-    protected function inputValid($numDims, $masks)
+    protected function inputValid($masks)
     {
-
         $isValid = true;
         if (is_array($masks)) {
             foreach ($masks as $mask) {
                 $mask = (string)$mask;
                 if (strlen($mask) > 0) {
-                    if (!preg_match('/^([0-1]+)$/', $mask) or strlen($mask) != $numDims) {
+                    if (!preg_match('/^([0-1]+)$/', $mask) or strlen($mask) != $this->getNumberOfDimensions($masks)) {
                         $isValid = false;
                     }
                 } else {
@@ -257,16 +240,7 @@ class BaseGrouper implements Grouper
         return $mask;
     }
 
-    /**
-     * With given number of dimensions find mask that represents finiest grouping (consists of pure "ones")
-     * E.g. having 3 dimensions, the top level mask is 111
-     *
-     * @return string $maskHash
-     */
-    protected function getTopLevelMask()
-    {
-        return str_repeat('1', $this->numDims);
-    }
+
 
     /**
      * Add top level mask into set of masks provided by user.
@@ -276,7 +250,7 @@ class BaseGrouper implements Grouper
      */
     protected function addTopLevelMask(&$masks)
     {
-        $topLevelMask = $this->getTopLevelMask();
+        $topLevelMask = $this->getTopLevelMask($this->numDims);
         if (!in_array($topLevelMask, $masks)) {
             $masks[] = $topLevelMask;
         }
@@ -304,44 +278,5 @@ class BaseGrouper implements Grouper
     }
 
 
-    /**
-     * Find permutations (all order combinations) of an array.
-     * E.g.: 123 will result in (123,213,132,312,231,321)
-     *
-     * @param $return
-     * @param $items
-     * @param array $perms
-     */
-    protected function permute(&$return, $items, $perms = [])
-    {
-        if (empty($items)) {
-            $return[] = join('', $perms);
-        } else {
-            for ($i = count($items) - 1; $i >= 0; --$i) {
-                $newItems = $items;
-                $newPerms = $perms;
-                list($foo) = array_splice($newItems, $i, 1);
-                array_unshift($newPerms, $foo);
-                $this->permute($return, $newItems, $newPerms);
-            }
-        }
-    }
 
-    /**
-     * Get power set (all combinations regardless of order) for an array.
-     * E.g. (1,2) will result in ((),(1),(2),(1,2))
-     *
-     * @param array $array
-     * @return array $results
-     */
-    protected function getPowerSet($array)
-    {
-        $results = [[]];
-        foreach ($array as $element) {
-            foreach ($results as $combination) {
-                array_push($results, array_merge([$element], $combination));
-            }
-        }
-        return $results;
-    }
 }
