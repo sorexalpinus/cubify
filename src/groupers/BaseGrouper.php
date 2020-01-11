@@ -114,10 +114,16 @@ class BaseGrouper implements Grouper
      */
     protected function inputValid($numDims, $masks)
     {
+
         $isValid = true;
         if (is_array($masks)) {
             foreach ($masks as $mask) {
-                if (!preg_match('/^([0-1]+)$/', $mask) or strlen($mask) != $numDims) {
+                $mask = (string)$mask;
+                if (strlen($mask) > 0) {
+                    if (!preg_match('/^([0-1]+)$/', $mask) or strlen($mask) != $numDims) {
+                        $isValid = false;
+                    }
+                } else {
                     $isValid = false;
                 }
             }
