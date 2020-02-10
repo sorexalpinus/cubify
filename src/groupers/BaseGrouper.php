@@ -26,14 +26,19 @@ class BaseGrouper implements Grouper
      * GroupingsGenerator constructor.
      *
      * @param array|string $masks Masks to cover as an array or 'all' for all possible combinations.
+     * @param int $numDims Number of dimensions. Mandatory for 'all'.
      * @throws CubifyException
      */
-    public function __construct($masks)
+    public function __construct($masks,$numDims = null)
     {
         $this->numDims = $this->getNumberOfDimensions($masks);
         if ($this->inputValid($masks)) {
             if ($masks == 'all') {
-                $masks = $this->getAllPossibleMasks($this->numDims);
+                if(!isset($numDims)) {
+                    throw new CubifyException('Invalid definition - for "all" masks option, the number of dimensions must be specified');
+                }
+                $this->numDims = $numDims;
+                $masks = $this->getAllPossibleMasks($numDims);
             }
             $this->addTopLevelMask($masks);
             $this->sortMasks($masks);

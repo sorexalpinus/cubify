@@ -25,7 +25,7 @@ trait Mask
         $array = range(1, $numDims);
         $powerSet = $this->getPowerSet($array);
         foreach ($powerSet as $combination) {
-            $masks[] = $this->getMaskForCombination($combination);
+            $masks[] = $this->getMaskForCombination($combination,$numDims);
         }
         arsort($masks);
         return $masks;
@@ -105,9 +105,9 @@ trait Mask
      * @param array $combination
      * @return string $mask
      */
-    protected function getMaskForCombination($combination)
+    protected function getMaskForCombination($combination,$numDims)
     {
-        $base = str_repeat('0', $this->numDims);
+        $base = str_repeat('0', $numDims);
         $mask = $base;
         foreach ($combination as $pos) {
             $mask[$pos - 1] = '1';
