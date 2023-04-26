@@ -34,7 +34,7 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Cubify\\Tests\\": "tests/"
+      "Cubify\\Tests\\": "Tests/"
     }
   }
 }
